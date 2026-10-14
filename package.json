@@ -1,0 +1,54 @@
+{
+  "name": "@dockndevai/mcp-android",
+  "mcpName": "io.github.dockndevai/mcp-android",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server to control an Android device over ADB — screenshots, taps, typing, app launch, alarms, notifications — safe-by-default with access modes and gated destructive ops.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dockndevai/mcp-android.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dockndevai/mcp-android/issues"
+  },
+  "homepage": "https://github.com/dockndevai/mcp-android#readme",
+  "bin": {
+    "mcp-android": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "android",
+    "adb",
+    "device-control",
+    "mobile",
+    "llm",
+    "ai"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^5.0.4"
+  }
+}

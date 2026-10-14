@@ -1,0 +1,83 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.dockndevai/mcp-android",
+  "description": "Control an Android device over ADB for AI agents — screenshots, taps, typing, app launch, alarms, notifications — safe-by-default with access modes and gated destructive ops.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/dockndevai/mcp-android",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@dockndevai/mcp-android",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ANDROID_MODE",
+          "description": "Access mode: read-only | read-write | admin.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANDROID_ADB_PATH",
+          "description": "Path to the adb binary (default: adb on PATH).",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANDROID_SERIAL",
+          "description": "Target device serial from `adb devices`. Empty = the only connected device.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANDROID_TIMEOUT_MS",
+          "description": "Per-command adb timeout in milliseconds.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANDROID_PACKAGE_ALLOWLIST",
+          "description": "Comma-separated package allowlist for launch/uninstall/clear. Empty = all.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANDROID_PROTECTED_PACKAGES",
+          "description": "Packages that can be launched/inspected but never uninstalled or data-cleared.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANDROID_ALLOW_INSTALL",
+          "description": "Enable install_apk / uninstall_app / clear_app_data (requires admin mode too).",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANDROID_ALLOW_SHELL",
+          "description": "Enable run_shell (arbitrary adb shell; requires admin mode too).",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANDROID_DRY_RUN",
+          "description": "Validate + log write/admin actions without executing them on the device.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "ANDROID_AUDIT_LOG",
+          "description": "Emit a JSON audit line to stderr per guarded operation (default true).",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
