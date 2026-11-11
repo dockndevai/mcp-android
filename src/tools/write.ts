@@ -92,11 +92,12 @@ export const writeTools: ToolDef[] = [
     capability: "write",
     config: {
       title: "Open URL",
-      description: "Open a URL / deep link in the default handler.",
+      description: "Open a URL / deep link in the default handler. Only http, https, tel, mailto, geo and market URLs by default (ANDROID_EXTRA_URL_SCHEMES adds more); other schemes are refused.",
       inputSchema: { url: z.string() },
     },
     handler: async (a, { client, policy }) => {
       const { dryRun } = policy.guard({ tool: "open_url", capability: "write" });
+      client.checkUrl(a.url as string); // refuse before the dry-run branch so a dry run reports the same refusal
       if (dryRun) return textResult(`[dry-run] Would open ${a.url}.`);
       await client.openUrl(a.url as string);
       return jsonResult({ opened: a.url });

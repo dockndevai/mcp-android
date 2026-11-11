@@ -167,7 +167,7 @@ describe("version tokens", () => {
     const adb = new AdbClient({ adbPath: "adb-not-used", timeout: 1000 });
     vi.spyOn(adb as unknown as { run: (a: string[]) => Promise<string> }, "run").mockImplementation(async (args: string[]) => {
       if (args[0] === "get-serialno") return `${serial}\n`;
-      if (args.includes("dumpsys")) return dump;
+      if (args[1]?.startsWith("dumpsys")) return dump; // args = ["shell", "<one device-shell string>"]
       return "fingerprint-x\n";
     });
     return adb;

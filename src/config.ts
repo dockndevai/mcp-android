@@ -2,6 +2,7 @@
  * Configuration from environment variables. The server drives a connected
  * Android device through the `adb` CLI (USB or wireless debugging).
  */
+import { parseUrlSchemes } from "./adb/shell.js";
 import type { AccessMode, SecurityConfig } from "./security.js";
 
 export interface AndroidConnection {
@@ -11,6 +12,8 @@ export interface AndroidConnection {
   serial?: string;
   /** Per-command timeout (ms). */
   timeout: number;
+  /** URL schemes `open_url` accepts in addition to http, https, tel, mailto, geo, market. */
+  extraUrlSchemes?: string[];
 }
 
 export interface AppConfig {
@@ -42,6 +45,7 @@ export function loadConfig(): AppConfig {
       adbPath: process.env.ANDROID_ADB_PATH || "adb",
       serial: process.env.ANDROID_SERIAL || undefined,
       timeout: Number(process.env.ANDROID_TIMEOUT_MS ?? 20000),
+      extraUrlSchemes: parseUrlSchemes(list("ANDROID_EXTRA_URL_SCHEMES")),
     },
     security: {
       mode: parseMode(),
