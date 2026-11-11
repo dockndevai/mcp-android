@@ -15,9 +15,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `clear_app_data`): anything that is not a plain dotted identifier is rejected. `adb shell` joins its
   arguments into a string for the device shell, so an unvalidated name could carry shell syntax (and
   the new version probe runs before the human is asked).
-- Dependencies: `@modelcontextprotocol/sdk` 1.32.1 -> 1.32.2 and `npm audit fix` clear the `body-parser`,
-  `fast-uri` and `qs` advisories in the production tree. `npm audit --omit=dev` still reports one high
-  advisory for `zod` (3.x line); its only fix is `zod@4`, a major bump that is not part of this release.
+- Dependencies: `@modelcontextprotocol/sdk` 1.32.1 -> 1.32.2, `npm audit fix` and `zod` 3 -> 4 (4.6.7)
+  clear every advisory in the production tree (`npm audit --omit=dev` is clean; it previously reported
+  `body-parser`, `fast-uri`, `qs` and a high `zod` memory-exhaustion advisory with no 3.x fix). No tool
+  schema changed: a new test (`test/schemas.test.ts`) pins every tool's advertised input schema. The only
+  differences in the generated JSON Schema are cosmetic and do not change what a tool accepts: zod 4 no
+  longer emits `additionalProperties: false` (unknown keys are still stripped) and adds safe-integer
+  bounds to integer fields.
 
 ### Added
 - **Approvals are bound to the exact action.** The prompt shows the tool, the full (secret-redacted)

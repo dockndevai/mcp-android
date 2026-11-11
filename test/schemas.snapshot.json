@@ -1,0 +1,224 @@
+{
+  "clear_app_data": {
+    "properties": {
+      "package": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "package"
+    ],
+    "type": "object"
+  },
+  "current_app": {
+    "properties": {},
+    "type": "object"
+  },
+  "device_info": {
+    "properties": {},
+    "type": "object"
+  },
+  "get_notifications": {
+    "properties": {},
+    "type": "object"
+  },
+  "input_text": {
+    "properties": {
+      "text": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "text"
+    ],
+    "type": "object"
+  },
+  "install_apk": {
+    "properties": {
+      "apkPath": {
+        "description": "Path to a .apk on this machine",
+        "type": "string"
+      }
+    },
+    "required": [
+      "apkPath"
+    ],
+    "type": "object"
+  },
+  "launch_app": {
+    "properties": {
+      "package": {
+        "description": "Package name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "package"
+    ],
+    "type": "object"
+  },
+  "list_apps": {
+    "properties": {
+      "includeSystem": {
+        "description": "Include system packages",
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  },
+  "list_devices": {
+    "properties": {},
+    "type": "object"
+  },
+  "open_url": {
+    "properties": {
+      "url": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "url"
+    ],
+    "type": "object"
+  },
+  "press_key": {
+    "properties": {
+      "key": {
+        "enum": [
+          "HOME",
+          "BACK",
+          "MENU",
+          "APP_SWITCH",
+          "ENTER",
+          "DEL",
+          "TAB",
+          "SEARCH",
+          "VOLUME_UP",
+          "VOLUME_DOWN",
+          "POWER",
+          "CAMERA",
+          "MEDIA_PLAY_PAUSE",
+          "MEDIA_NEXT",
+          "MEDIA_PREVIOUS"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "key"
+    ],
+    "type": "object"
+  },
+  "run_shell": {
+    "properties": {
+      "command": {
+        "description": "Shell command, e.g. 'dumpsys battery'",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command"
+    ],
+    "type": "object"
+  },
+  "screenshot": {
+    "properties": {},
+    "type": "object"
+  },
+  "set_alarm": {
+    "properties": {
+      "hour": {
+        "maximum": 23,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "message": {
+        "type": "string"
+      },
+      "minute": {
+        "maximum": 59,
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "hour",
+      "minute"
+    ],
+    "type": "object"
+  },
+  "set_timer": {
+    "properties": {
+      "message": {
+        "type": "string"
+      },
+      "seconds": {
+        "maximum": 86400,
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "seconds"
+    ],
+    "type": "object"
+  },
+  "swipe": {
+    "properties": {
+      "durationMs": {
+        "maximum": 5000,
+        "minimum": 50,
+        "type": "integer"
+      },
+      "x1": {
+        "type": "integer"
+      },
+      "x2": {
+        "type": "integer"
+      },
+      "y1": {
+        "type": "integer"
+      },
+      "y2": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "x1",
+      "y1",
+      "x2",
+      "y2"
+    ],
+    "type": "object"
+  },
+  "tap": {
+    "properties": {
+      "x": {
+        "type": "integer"
+      },
+      "y": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "x",
+      "y"
+    ],
+    "type": "object"
+  },
+  "ui_dump": {
+    "properties": {},
+    "type": "object"
+  },
+  "uninstall_app": {
+    "properties": {
+      "package": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "package"
+    ],
+    "type": "object"
+  }
+}
