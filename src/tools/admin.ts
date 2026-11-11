@@ -18,7 +18,12 @@ export const adminTools: ToolDef[] = [
     handler: async (a, { client, policy, confirm }) => {
       const { dryRun } = policy.guard({ tool: "install_apk", capability: "admin", requiresInstall: true });
       if (dryRun) return textResult(`[dry-run] Would install ${a.apkPath}.`);
-      const ok = await confirm.confirm({ action: "install APK", target: a.apkPath as string });
+      const apkPath = a.apkPath as string;
+      const ok = await confirm.confirm({
+        action: "install APK",
+        target: apkPath,
+        probe: () => client.apkVersion(apkPath),
+      });
       if (!ok.approved) return textResult(`Cancelled: install_apk was ${ok.reason}.`);
       return textResult((await client.install(a.apkPath as string)).trim());
     },
@@ -35,7 +40,11 @@ export const adminTools: ToolDef[] = [
       const pkg = a.package as string;
       const { dryRun } = policy.guard({ tool: "uninstall_app", capability: "admin", pkg, destructive: true, requiresInstall: true });
       if (dryRun) return textResult(`[dry-run] Would uninstall ${pkg}.`);
-      const ok = await confirm.confirm({ action: "uninstall app", target: pkg });
+      const ok = await confirm.confirm({
+        action: "uninstall app",
+        target: pkg,
+        probe: () => client.packageVersion(pkg),
+      });
       if (!ok.approved) return textResult(`Cancelled: uninstall_app was ${ok.reason}.`);
       return textResult((await client.uninstall(pkg)).trim());
     },
@@ -52,7 +61,11 @@ export const adminTools: ToolDef[] = [
       const pkg = a.package as string;
       const { dryRun } = policy.guard({ tool: "clear_app_data", capability: "admin", pkg, destructive: true, requiresInstall: true });
       if (dryRun) return textResult(`[dry-run] Would clear data for ${pkg}.`);
-      const ok = await confirm.confirm({ action: "clear app data", target: pkg });
+      const ok = await confirm.confirm({
+        action: "clear app data",
+        target: pkg,
+        probe: () => client.packageVersion(pkg),
+      });
       if (!ok.approved) return textResult(`Cancelled: clear_app_data was ${ok.reason}.`);
       return textResult((await client.clearAppData(pkg)).trim());
     },
@@ -69,7 +82,13 @@ export const adminTools: ToolDef[] = [
     handler: async (a, { client, policy, confirm }) => {
       const { dryRun } = policy.guard({ tool: "run_shell", capability: "admin", requiresShell: true });
       if (dryRun) return textResult(`[dry-run] Would run: ${a.command}`);
-      const ok = await confirm.confirm({ action: "run adb shell command", target: a.command as string });
+      const command = a.command as string;
+      // The command text is the action (shown in full and fingerprinted); the only state to pin is which device it runs on.
+      const ok = await confirm.confirm({
+        action: "run adb shell command",
+        target: command,
+        probe: () => client.deviceIdentity(),
+      });
       if (!ok.approved) return textResult(`Cancelled: run_shell was ${ok.reason}.`);
       const out = await client.rawShell(a.command as string);
       return textResult(out.length > 40000 ? out.slice(0, 40000) + "\n… (truncated)" : out);

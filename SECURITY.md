@@ -18,6 +18,18 @@ access.
   `install_apk`, `run_shell`) pauses and asks the **human** to approve the exact
   action before it runs. The model cannot approve on the user's behalf. When the
   client can't elicit, the policy gate above is the control.
+- **Require a human for destructive ops.** Set `ANDROID_REQUIRE_HUMAN_APPROVAL=true` so
+  `install_apk`, `uninstall_app`, `clear_app_data` and `run_shell` are refused when the client cannot
+  show an approval prompt. Each approval is bound to the exact tool and arguments (fingerprint) and to
+  a version token read before the prompt and again after the answer; if it changed, the action is
+  refused. The tokens: `uninstall_app` / `clear_app_data` — installed versionName + versionCode,
+  first-install and last-update time, and the device serial + OS build (not the app's data, which
+  changes constantly); `install_apk` — the APK file's size, mtime and inode, plus the device;
+  `run_shell` — the device serial + OS build only (the command text is the action). A prompt nobody
+  answers is a refusal. Approval receipts are written to the audit log (`"audit":"approval"`, with
+  `approvedBy` = `human` or `flag-only`).
+- **Package names are validated.** Package names are rejected unless they are plain dotted
+  identifiers before they reach `adb shell`, which hands its arguments to the device's shell.
 - **Protected packages are read-only forever.** Add critical packages to
   `ANDROID_PROTECTED_PACKAGES` (defaults: settings, systemui, gms) so they can be
   launched and inspected but never uninstalled or data-cleared, regardless of
