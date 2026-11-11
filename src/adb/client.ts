@@ -1,13 +1,17 @@
 /**
- * Thin wrapper over the `adb` CLI. Each method shells out with an argument
- * array (no shell string), so device text/URLs can't inject commands.
+ * Thin wrapper over the `adb` CLI. adb itself is always run with an argument array (no local shell),
+ * but `adb shell` hands its arguments to the DEVICE's shell as one joined string. Every `shell()` call
+ * therefore quotes each argument (src/adb/shell.ts) and passes adb a single string, so text, URLs and
+ * messages cannot carry shell syntax. `rawShell` (run_shell) is the one deliberate exception.
  */
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import type { AndroidConnection } from "../config.js";
+import { AdbError, assertInt, assertKeycode, assertUrl, inputTextChunks, shellJoin } from "./shell.js";
 
-export class AdbError extends Error {}
+export { AdbError };
 
 /**
  * `adb shell <args…>` joins its arguments into one string for the device's shell, so a package name
@@ -45,8 +49,12 @@ export class AdbClient {
     });
   }
 
+  /**
+   * Run a command on the device. Each argument is shell-quoted and the result is ONE string for adb
+   * (adb would otherwise join separate arguments with spaces and let the device shell re-parse them).
+   */
   private shell(cmd: string[]): Promise<string> {
-    return this.run(["shell", ...cmd]) as Promise<string>;
+    return this.run(["shell", shellJoin(cmd)]) as Promise<string>;
   }
 
   // --- Reads -----------------------------------------------------------------
@@ -144,7 +152,7 @@ export class AdbClient {
   async apkVersion(path: string): Promise<string | undefined> {
     let s: Awaited<ReturnType<typeof stat>>;
     try {
-      s = await stat(path);
+      s = await stat(resolve(path));
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === "ENOENT") return undefined;
       throw err;
@@ -155,39 +163,54 @@ export class AdbClient {
 
   // --- Writes (UI control) ---------------------------------------------------
 
-  tap(x: number, y: number) {
-    return this.shell(["input", "tap", String(x), String(y)]);
+  async tap(x: number, y: number): Promise<string> {
+    return this.shell(["input", "tap", String(assertInt(x, "x")), String(assertInt(y, "y"))]);
   }
-  swipe(x1: number, y1: number, x2: number, y2: number, durationMs = 300) {
-    return this.shell(["input", "swipe", String(x1), String(y1), String(x2), String(y2), String(durationMs)]);
+  async swipe(x1: number, y1: number, x2: number, y2: number, durationMs = 300): Promise<string> {
+    return this.shell([
+      "input", "swipe",
+      String(assertInt(x1, "x1")), String(assertInt(y1, "y1")), String(assertInt(x2, "x2")), String(assertInt(y2, "y2")),
+      String(assertInt(durationMs, "durationMs")),
+    ]);
   }
-  inputText(text: string) {
-    // adb `input text` uses %s for spaces and can't handle some chars; encode spaces.
-    return this.shell(["input", "text", text.replace(/ /g, "%s")]);
+  /**
+   * Type text into the focused field. Spaces are sent as `%s` (what `input text` expects) and a
+   * literal `%s` is typed as two commands (see inputTextChunks); each chunk is a quoted argument.
+   */
+  async inputText(text: string): Promise<string> {
+    const chunks = inputTextChunks(text);
+    for (const chunk of chunks) shellJoin(["input", "text", chunk]); // validate everything before typing anything
+    let out = "";
+    for (const chunk of chunks) out += await this.shell(["input", "text", chunk]);
+    return out;
   }
-  key(keycode: string) {
-    return this.shell(["input", "keyevent", keycode]);
+  async key(keycode: string): Promise<string> {
+    return this.shell(["input", "keyevent", assertKeycode(keycode)]);
   }
-  launchApp(pkg: string) {
+  async launchApp(pkg: string): Promise<string> {
     assertPackageName(pkg);
     return this.shell(["monkey", "-p", pkg, "-c", "android.intent.category.LAUNCHER", "1"]);
   }
-  openUrl(url: string) {
-    return this.shell(["am", "start", "-a", "android.intent.action.VIEW", "-d", url]);
+  /** Throws unless the URL's scheme is allowed (defaults + ANDROID_EXTRA_URL_SCHEMES). */
+  checkUrl(url: string): string {
+    return assertUrl(url, this.conn.extraUrlSchemes);
   }
-  setAlarm(hour: number, minutes: number, message: string) {
+  async openUrl(url: string): Promise<string> {
+    return this.shell(["am", "start", "-a", "android.intent.action.VIEW", "-d", this.checkUrl(url)]);
+  }
+  async setAlarm(hour: number, minutes: number, message: string): Promise<string> {
     return this.shell([
       "am", "start", "-a", "android.intent.action.SET_ALARM",
-      "--ei", "android.intent.extra.alarm.HOUR", String(hour),
-      "--ei", "android.intent.extra.alarm.MINUTES", String(minutes),
+      "--ei", "android.intent.extra.alarm.HOUR", String(assertInt(hour, "hour")),
+      "--ei", "android.intent.extra.alarm.MINUTES", String(assertInt(minutes, "minutes")),
       "--ez", "android.intent.extra.alarm.SKIP_UI", "true",
       "-e", "android.intent.extra.alarm.MESSAGE", message,
     ]);
   }
-  setTimer(seconds: number, message: string) {
+  async setTimer(seconds: number, message: string): Promise<string> {
     return this.shell([
       "am", "start", "-a", "android.intent.action.SET_TIMER",
-      "--ei", "android.intent.extra.alarm.LENGTH", String(seconds),
+      "--ei", "android.intent.extra.alarm.LENGTH", String(assertInt(seconds, "seconds")),
       "--ez", "android.intent.extra.alarm.SKIP_UI", "true",
       "-e", "android.intent.extra.alarm.MESSAGE", message,
     ]);
@@ -196,13 +219,14 @@ export class AdbClient {
   // --- Admin -----------------------------------------------------------------
 
   install(apkPath: string) {
-    return this.run(["install", "-r", apkPath]) as Promise<string>;
+    // Absolute path: a relative one starting with "-" would be read by adb as an install option.
+    return this.run(["install", "-r", resolve(apkPath)]) as Promise<string>;
   }
-  uninstall(pkg: string) {
+  async uninstall(pkg: string): Promise<string> {
     assertPackageName(pkg);
     return this.run(["uninstall", pkg]) as Promise<string>;
   }
-  clearAppData(pkg: string) {
+  async clearAppData(pkg: string): Promise<string> {
     assertPackageName(pkg);
     return this.shell(["pm", "clear", pkg]);
   }

@@ -25,7 +25,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   longer emits `additionalProperties: false` (unknown keys are still stripped) and adds safe-integer
   bounds to integer fields.
 
+- **Fixed shell injection in `input_text`, `open_url`, `set_alarm` and `set_timer`.** `adb shell` joins
+  its arguments into one string that the device's shell parses, and these tools passed raw text/URLs/messages, so
+  `a; rm -rf /sdcard/x`, `$(id)` or backticks ran on the device, even in `read-write` mode with
+  `ANDROID_ALLOW_SHELL` off (the README/SECURITY claim "no shell injection" was false for them). Every device-shell
+  command now goes through one helper (`src/adb/shell.ts`) that single-quotes each argument and gives adb a single
+  string. Verified by tests that execute the handed-over string in a real POSIX shell.
+- `input_text` handles `%s` correctly (a literal `%s` is typed in two steps instead of becoming a space), and numbers
+  and keycodes are validated before they reach a command line.
+- `open_url` refuses any URL scheme other than `http`, `https`, `tel`, `mailto`, `geo`, `market` (and any in the new
+  `ANDROID_EXTRA_URL_SCHEMES`), and URLs containing control characters.
+- `install_apk` resolves the APK path to an absolute path so a relative path starting with `-` cannot be read as an
+  `adb install` option.
+
 ### Added
+- `ANDROID_EXTRA_URL_SCHEMES` — comma-separated extra URL schemes `open_url` may open.
 - **Approvals are bound to the exact action.** The prompt shows the tool, the full (secret-redacted)
   arguments and a fingerprint; every approval and refusal is written to the audit log as
   `"audit":"approval"` with the fingerprint, resource version and `approvedBy` (`human` / `flag-only`).

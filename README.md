@@ -59,12 +59,15 @@ The typical loop for driving the UI: **`screenshot` → `ui_dump` (find bounds) 
 | Protected packages (never uninstall/clear) | `ANDROID_PROTECTED_PACKAGES` | settings, systemui, gms |
 | Allow install/uninstall/clear | `ANDROID_ALLOW_INSTALL` | `false` |
 | Allow raw `adb shell` | `ANDROID_ALLOW_SHELL` | `false` |
+| Extra `open_url` schemes (beyond http, https, tel, mailto, geo, market) | `ANDROID_EXTRA_URL_SCHEMES` | *(none)* |
 | Interactive confirmation (destructive ops) | MCP elicitation (client-driven) | *(on when the client supports it)* |
 | Require a human | `ANDROID_REQUIRE_HUMAN_APPROVAL` | `false` |
 | Preview without touching device | `ANDROID_DRY_RUN` | `false` |
 | Audit log (stderr) | `ANDROID_AUDIT_LOG` | `true` |
 
 When the connected client supports MCP **elicitation**, destructive tools (`uninstall_app`, `clear_app_data`, `install_apk`, `run_shell`) pause and ask the **human** to approve the exact action before it runs — the model can't approve on your behalf. The prompt shows the tool, the exact (secret-redacted) arguments and a fingerprint; a version token for the target is read before the prompt and again after you answer, and the action is refused if it changed; a prompt nobody answers is a refusal. When the client can't elicit, the access-mode + flag gates above are the control — unless `ANDROID_REQUIRE_HUMAN_APPROVAL=true`, in which case destructive ops are **refused** instead.
+
+**Shell injection.** `adb shell` joins its arguments into one string that the device's shell parses, so this server single-quotes every argument that reaches the device shell (one shared helper, `src/adb/shell.ts`) and passes adb exactly one string: text for `input_text`, URLs for `open_url` and alarm/timer messages are always literal data, and a `read-write` agent cannot use them to run commands or get around the `ANDROID_ALLOW_SHELL` gate (`run_shell`, which runs your string as-is by design, is the only exception). `open_url` additionally refuses any URL scheme other than http, https, tel, mailto, geo and market (plus `ANDROID_EXTRA_URL_SCHEMES`). `input_text` encodes spaces as `%s` and types a literal `%s` in two steps, because Android's `input text` would otherwise turn it into a space. See [SECURITY.md](SECURITY.md).
 
 Every tool also advertises MCP **tool annotations** (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so hosts can decide what to auto-approve.
 
