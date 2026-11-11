@@ -60,10 +60,13 @@ The typical loop for driving the UI: **`screenshot` → `ui_dump` (find bounds) 
 | Allow install/uninstall/clear | `ANDROID_ALLOW_INSTALL` | `false` |
 | Allow raw `adb shell` | `ANDROID_ALLOW_SHELL` | `false` |
 | Interactive confirmation (destructive ops) | MCP elicitation (client-driven) | *(on when the client supports it)* |
+| Require a human | `ANDROID_REQUIRE_HUMAN_APPROVAL` | `false` |
 | Preview without touching device | `ANDROID_DRY_RUN` | `false` |
 | Audit log (stderr) | `ANDROID_AUDIT_LOG` | `true` |
 
-When the connected client supports MCP **elicitation**, destructive tools (`uninstall_app`, `clear_app_data`, `install_apk`, `run_shell`) pause and ask the **human** to approve the exact action before it runs — the model can't approve on your behalf. When the client can't elicit, the access-mode + flag gates above are the control.
+When the connected client supports MCP **elicitation**, destructive tools (`uninstall_app`, `clear_app_data`, `install_apk`, `run_shell`) pause and ask the **human** to approve the exact action before it runs — the model can't approve on your behalf. The prompt shows the tool, the exact (secret-redacted) arguments and a fingerprint; a version token for the target is read before the prompt and again after you answer, and the action is refused if it changed; a prompt nobody answers is a refusal. When the client can't elicit, the access-mode + flag gates above are the control — unless `ANDROID_REQUIRE_HUMAN_APPROVAL=true`, in which case destructive ops are **refused** instead.
+
+Every tool also advertises MCP **tool annotations** (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so hosts can decide what to auto-approve.
 
 ## Run with Claude Desktop / Claude Code
 

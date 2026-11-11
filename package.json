@@ -1,7 +1,7 @@
 {
   "name": "@dockndevai/mcp-android",
   "mcpName": "io.github.dockndevai/mcp-android",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Model Context Protocol server to control an Android device over ADB — screenshots, taps, typing, app launch, alarms, notifications — safe-by-default with access modes and gated destructive ops.",
   "type": "module",
   "license": "MIT",
@@ -42,7 +42,7 @@
     "ai"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {

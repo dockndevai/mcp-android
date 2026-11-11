@@ -4,27 +4,35 @@ import type { AppConfig } from "./config.js";
 import { makeConfirmer } from "./elicit.js";
 import { PolicyError, SecurityPolicy } from "./security.js";
 import { adminTools } from "./tools/admin.js";
+import { annotationsFor } from "./tools/annotations.js";
 import { readTools } from "./tools/read.js";
 import type { ToolContext, ToolDef } from "./tools/types.js";
 import { writeTools } from "./tools/write.js";
 
-const ALL_TOOLS: ToolDef[] = [...readTools, ...writeTools, ...adminTools];
+export const ALL_TOOLS: ToolDef[] = [...readTools, ...writeTools, ...adminTools];
 
 export function buildServer(config: AppConfig): { server: McpServer; enabled: string[] } {
   const policy = new SecurityPolicy(config.security);
   const client = new AdbClient(config.connection);
 
-  const server = new McpServer({ name: "mcp-android", version: "0.1.0" });
-  const ctx: ToolContext = { client, policy, confirm: makeConfirmer(server) };
+  const server = new McpServer({ name: "mcp-android", version: "0.2.0" });
+  const confirmer = makeConfirmer(server, {
+    name: "mcp-android",
+    requireHuman: config.security.requireHumanApproval,
+    audit: config.security.auditLog,
+  });
+  const ctx: ToolContext = { client, policy, confirm: confirmer };
 
   const enabled: string[] = [];
   for (const tool of ALL_TOOLS) {
     if (!policy.isCapabilityEnabled(tool.capability)) continue;
     if (tool.enabledWhen && !tool.enabledWhen(policy)) continue;
     enabled.push(tool.name);
-    server.registerTool(tool.name, tool.config, async (args: Record<string, unknown>) => {
+    server.registerTool(tool.name, { ...tool.config, annotations: annotationsFor(tool) }, async (args: Record<string, unknown>) => {
       try {
-        return await tool.handler(args ?? {}, ctx);
+        // Every approval prompt in this call is bound to this tool + these exact arguments.
+        const callCtx: ToolContext = { ...ctx, confirm: confirmer.forCall(tool.name, args ?? {}) };
+        return await tool.handler(args ?? {}, callCtx);
       } catch (err) {
         return toErrorResult(err);
       }

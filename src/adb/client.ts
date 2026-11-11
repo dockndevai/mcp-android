@@ -3,9 +3,22 @@
  * array (no shell string), so device text/URLs can't inject commands.
  */
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
+import { stat } from "node:fs/promises";
 import type { AndroidConnection } from "../config.js";
 
 export class AdbError extends Error {}
+
+/**
+ * `adb shell <args…>` joins its arguments into one string for the device's shell, so a package name
+ * is only safe to pass if it cannot carry shell syntax. Android package names are dot-separated
+ * Java identifiers; reject anything else before it reaches a device shell (or a version probe,
+ * which runs BEFORE the human is asked).
+ */
+const PACKAGE_NAME = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)*$/;
+function assertPackageName(pkg: string): void {
+  if (!PACKAGE_NAME.test(pkg)) throw new AdbError(`Invalid package name: ${JSON.stringify(pkg)}`);
+}
 
 export class AdbClient {
   constructor(private readonly conn: AndroidConnection) {}
@@ -90,6 +103,56 @@ export class AdbClient {
     return lines.slice(0, 200).join("\n") || "(no readable notifications; needs Android 11+)";
   }
 
+  // --- Version tokens (pinned across an approval prompt) ------------------------
+
+  /**
+   * Which device and which OS build this client is talking to: adb serial + `ro.build.fingerprint`.
+   * Catches "a different phone was plugged in while the prompt was open". It does not change on
+   * reboot or app activity; only an OS update or a different device changes it.
+   */
+  async deviceIdentity(): Promise<string> {
+    const serial = ((await this.run(["get-serialno"])) as string).trim();
+    const build = (await this.shell(["getprop", "ro.build.fingerprint"])).trim();
+    return `${serial}|${build}`;
+  }
+
+  /**
+   * Version token for an installed package: versionName, versionCode, firstInstallTime and
+   * lastUpdateTime from `dumpsys package` (all change only on install/update/reinstall), plus the
+   * device identity. `undefined` if the package is not installed. It does NOT cover the app's data:
+   * data written while the human is deciding is not detected, so a `clear_app_data` approval pins
+   * "this build of this app on this device", not "this exact data".
+   */
+  async packageVersion(pkg: string): Promise<string | undefined> {
+    assertPackageName(pkg);
+    const out = await this.shell(["dumpsys", "package", pkg]);
+    const pick = (key: string, toEol = false): string | undefined =>
+      out.match(new RegExp(`^\\s*${key}=(${toEol ? ".+" : "\\S+"})`, "m"))?.[1]?.trim();
+    const versionCode = pick("versionCode");
+    if (!versionCode) return undefined;
+    const name = pick("versionName") ?? "?";
+    const detail = [pick("firstInstallTime", true), pick("lastUpdateTime", true), await this.deviceIdentity()].join("|");
+    const digest = createHash("sha256").update(detail).digest("hex").slice(0, 8);
+    return `${name} (${versionCode}) #${digest}`;
+  }
+
+  /**
+   * Version token for a file on this computer: size + mtime + inode, plus the device identity (an
+   * APK approved for one phone is not approved for another). `undefined` if the file does not
+   * exist. A file replaced in place with the same size, mtime and inode is not detected.
+   */
+  async apkVersion(path: string): Promise<string | undefined> {
+    let s: Awaited<ReturnType<typeof stat>>;
+    try {
+      s = await stat(path);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw err;
+    }
+    const digest = createHash("sha256").update(await this.deviceIdentity()).digest("hex").slice(0, 8);
+    return `${s.size}B mtime=${Math.trunc(s.mtimeMs)} ino=${s.ino} #${digest}`;
+  }
+
   // --- Writes (UI control) ---------------------------------------------------
 
   tap(x: number, y: number) {
@@ -106,6 +169,7 @@ export class AdbClient {
     return this.shell(["input", "keyevent", keycode]);
   }
   launchApp(pkg: string) {
+    assertPackageName(pkg);
     return this.shell(["monkey", "-p", pkg, "-c", "android.intent.category.LAUNCHER", "1"]);
   }
   openUrl(url: string) {
@@ -135,9 +199,11 @@ export class AdbClient {
     return this.run(["install", "-r", apkPath]) as Promise<string>;
   }
   uninstall(pkg: string) {
+    assertPackageName(pkg);
     return this.run(["uninstall", pkg]) as Promise<string>;
   }
   clearAppData(pkg: string) {
+    assertPackageName(pkg);
     return this.shell(["pm", "clear", pkg]);
   }
   rawShell(cmd: string) {

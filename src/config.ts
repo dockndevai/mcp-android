@@ -53,6 +53,7 @@ export function loadConfig(): AppConfig {
       allowShell: bool("ANDROID_ALLOW_SHELL", false),
       dryRun: bool("ANDROID_DRY_RUN", false),
       auditLog: bool("ANDROID_AUDIT_LOG", true),
+      requireHumanApproval: bool("ANDROID_REQUIRE_HUMAN_APPROVAL", false),
     },
   };
 }
